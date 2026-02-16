@@ -1,25 +1,25 @@
-#ifndef RESULT_H
-#define RESULT_H
+#ifndef EITHER_H
+#define EITHER_H
 
 /*
   Rust's Result<T, E> implementation in C.
   This library DOES NOT DEPEND ANYTHING EXCEPT LIBC!
   This header supposed to be used ONLY FOR C/C++!
-  DO NOT USE RAW POINTERS IN EITHER/OPTION/RESULT DECLERATIONS!
+  DO NOT USE RAW POINTERS IN EITHER/OPTION/RESULT NAME PARAMS!
   Instead, use (for int*) int_ptr or if you have a special pointer type
   define typedef of it. Because something like this: Result(int*)
   gives some errors. But this is safe: Result(int_ptr)
 */
 
-#ifndef RESULTHDEF
-  #ifdef RESULTH_DYNAMIC  // define this when generating DLL/SO
+#ifndef EITHERHDEF
+  #ifdef EITHERHDEF_DYNAMIC  // define this when generating DLL/SO
     #if defined(_WIN32) || defined(__CYGWIN__)
-      #define RESULTHDEF __declspec(dllexport)
+      #define EITHERHDEF __declspec(dllexport)
     #else
-      #define RESULTHDEF __attribute__((visibility("default")))
+      #define EITHERHDEF __attribute__((visibility("default")))
     #endif
   #else
-    #define RESULTHDEF extern // normal usage like stb-style
+    #define EITHERHDEF extern // normal usage like stb-style
   #endif
 #endif
 
@@ -28,10 +28,11 @@
 
 // Error Code enum, you can add or change here
 typedef enum {
-  ERROR_INVALID_ARGUMENT,
-  ERROR_NOT_FOUND,
-  ERROR_VALIDATION_FAILED,
-  ERROR_INTERNAL
+  ERR_NOERR,
+  ERR_INVALID_ARG,
+  ERR_NOT_FOUND,
+  ERR_VALIDATION_FAILED,
+  ERR_INTERNAL
 } ErrorCode;
 
 typedef struct {
@@ -40,64 +41,84 @@ typedef struct {
 } Error;
 
 // Either(L, R) holds 2 different typed value
-#define Either(L, R) Either_##L##_##R
+#define Either(LName, RName) Either_##LName##_##RName
 
-#define DECL_EITHER(L, R)                       \
+#define DECL_EITHER(LType, LName, RType, RName) \
   typedef struct {                              \
     bool is_left;                               \
     union {                                     \
-      L left;                                  \
-      R right;                                  \
+      LType left;                               \
+      RType right;                              \
     } data;                                     \
-  } Either(L, R);
+  } Either(LName, RName);
 
-#define EITHER_L(L, R, lval)                       \
-  (Either(L, R)){ .is_left = 1, .data.left = (lval) }
+// Producing Either structs for returns at functions
+#define EITHER_L(LName, RName, lval)                          \
+  (Either(LName, RName)){ .is_left = 1, .data.left = (lval) }
+#define EITHER_R(LName, RName, rval)                            \
+  (Either(LName, RName)){ .is_left = 0, .data.right = (rval) }
 
-#define EITHER_R(L, R, rval)                        \
-  (Either(L, R)){ .is_left = 0, .data.right = (rval) }
+// Unwrap mechanism to get R (right) and L (left)
+#define EITHER_GETL(either)                     \
+  ((either)->data.left)
+#define EITHER_GETR(either)                     \
+  ((either)->data.right)
+
+// we have already is_left field to query value is left or right
 
 // Result(T) aka Either(T, Error) (Wrapper of Either)
-#define Result(T) Either(T, Error)
-#define DECL_RESULT(T) DECL_EITHER(T, Error)
+#define Result(TName) Either(TName, Error)
+#define DECL_RESULT(T, TName) DECL_EITHER(T, TName, Error, Error)
 
-#define RES_OK(T, val) \
-  EITHER_L(T, Error, val)
+// Producing Result objects for returns
+#define RES_OK(TName, val)                      \
+  EITHER_L(TName, Error, (val))
+#define RES_ERR(TName, err)                     \
+  EITHER_R(TName, Error, (err))
 
-#define RES_ERR(T, err) \
-  EITHER_R(T, Error, err)
+// Unwraps blindly, just unwrap
+#define RES_UNWRAP(res)                         \
+  ((res)->data.left)
+
+// Left: Value, Right: Error
+#define RES_ISERR(res)                          \
+  (!(res)->is_left)
+
+// Get error without asking
+#define RES_GETE(res) \
+  (EITHER_GETR((res)))
 
 // Option(T)
-#define Option(T) Option_##T
+#define Option(TName) Option_##TName
 
-#define DECL_OPTION(T)                          \
+#define DECL_OPTION(TType, TName)               \
   typedef struct {                              \
-    int is_some;                                \
-    T value;                                    \
-  } Option(T);
+    bool is_some;                               \
+    TType value;                                \
+  } Option(TName);
 
-#define OPT_SOME(T, val)                          \
-  (Option(T)){ .is_some = true, .value = (val) }
+// Producing Option structs for returns
+#define OPT_SOME(TName, val)                     \
+  ((Option(TName)){ .is_some = true, .value = (val) })
+#define OPT_NONE(TName)                         \
+  ((Option(TName)){ .is_some = false })
 
-#define OPT_NONE(T)                             \
-  (Option(T)){ .is_some = false }
+// Unwrap blindly
+#define OPT_UNWRAP(opt)                         \
+  ((opt)->value)
+
+// we have already is_some to query the value is either Some or None
 
 // like Option<void>,
-// use-case: instead of using Option<bool>
+// instead of using Option<bool>, use this
+// (if bool is just an error state)
 typedef struct {
-  int is_error;
+  bool is_error;
   Error error;
 } ErrorOrNot;
 
-// TYPES
-// Instead of using "*" in Either, Option or Result, use these 
+#define EON_SUCCESS ((ErrorOrNot){ false, { ERR_NOERR, NULL } })
 
-// pointer aliases
-typedef int*  int_ptr;
-typedef char* char_ptr;
-typedef const char* const_char_ptr;
-typedef void* void_ptr;
+#define EON_ERROR(EEnum, EMessage) ((ErrorOrNot){ true, { .code=EEnum, .message=EMessage } })
 
-// you can add your own types here
-
-#endif // RESULT_H
+#endif // EITHER_H
