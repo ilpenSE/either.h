@@ -17,16 +17,14 @@ Either(cc_ptr, int) doEither(int x) {
 }
 
 Result(c_ptr) doResult(int x) {
-  if (x==0) RES_ERR(c_ptr, ((Error){
-      .code=ERR_INVALID_ARG,
-      .message="x is NEVER meant to be 0"}));
+  if (x == 0) return RES_ERR(c_ptr, ERR_INVALID_ARG, "x is NEVER meant to be 0");
   char* ok = (char*)malloc(32);
   memcpy(ok, "Hello!", 7);
   return RES_OK(c_ptr, ok);
 }
 
 Option(size_t) returnSizeT(int x) {
-  if (x==0) OPT_NONE(size_t);
+  if (x==0) return OPT_NONE(size_t);
   return OPT_SOME(size_t, (size_t)123);
 }
 
@@ -37,6 +35,8 @@ ErrorOrNot doErrorOrNot(int x) {
 }
 
 int main() {
+  Error test = RES_ERR(c_ptr, ERR_INTERNAL, "Some message").data.right;
+  printf("%s\n", test.message);
 
   // EITHERS
   printf("\n=== EITHERS ===\n");
@@ -50,6 +50,7 @@ int main() {
   printf("\n=== RESULTS ===\n");
 	Result(c_ptr) b = doResult(1); // "Hello!" in char*
   char* str = RES_UNWRAP(&b);
+  // if b == doResult(0) => unwrap is dangerous and this will give SEGFAULT:
   printf("Unwrapped forcefully and violently: %s\n", str);
   if (RES_ISERR(&b)) printf("Result has errur: %s\n", RES_GETE(&b).message);
   else printf("Result does NOT have errur: %s\n", RES_UNWRAP(&b));

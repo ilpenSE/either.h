@@ -40,6 +40,9 @@ typedef struct {
   const char* message;
 } Error;
 
+#define MAKE_ERR(ecode, emsg) \
+  ((Error){.code=(ecode), .message=(emsg)})
+
 // Either(L, R) holds 2 different typed value
 #define Either(LName, RName) Either_##LName##_##RName
 
@@ -73,8 +76,8 @@ typedef struct {
 // Producing Result objects for returns
 #define RES_OK(TName, val)                      \
   EITHER_L(TName, Error, (val))
-#define RES_ERR(TName, err)                     \
-  EITHER_R(TName, Error, (err))
+#define RES_ERR(TName, errcode, errmsg)         \
+  EITHER_R(TName, Error, MAKE_ERR(errcode, errmsg))
 
 // Unwraps blindly, just unwrap
 #define RES_UNWRAP(res)                         \
