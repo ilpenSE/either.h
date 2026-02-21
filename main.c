@@ -48,7 +48,7 @@ int main() {
   
   // RESULTS
   printf("\n=== RESULTS ===\n");
-	Result(c_ptr) b = doResult(1); // "Hello!" in char*
+  Result(c_ptr) b = doResult(1); // "Hello!" in char*
   char* str = RES_UNWRAP(&b);
   // if b == doResult(0) => unwrap is dangerous and this will give SEGFAULT:
   printf("Unwrapped forcefully and violently: %s\n", str);
