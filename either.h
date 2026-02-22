@@ -9,19 +9,9 @@
   Instead, use (for int*) int_ptr or if you have a special pointer type
   define typedef of it. Because something like this: Result(int*)
   gives some errors. But this is safe: Result(int_ptr)
-*/
 
-#ifndef EITHERHDEF
-  #ifdef EITHERHDEF_DYNAMIC  // define this when generating DLL/SO
-    #if defined(_WIN32) || defined(__CYGWIN__)
-      #define EITHERHDEF __declspec(dllexport)
-    #else
-      #define EITHERHDEF __attribute__((visibility("default")))
-    #endif
-  #else
-    #define EITHERHDEF extern // normal usage like stb-style
-  #endif
-#endif
+  And it comes with some tools for development like TODO or UNREACHABLE macros
+*/
 
 #include <stddef.h>
 #include <stdbool.h>
@@ -32,13 +22,26 @@ typedef enum {
   ERR_INVALID_ARG,
   ERR_NOT_FOUND,
   ERR_VALIDATION_FAILED,
-  ERR_INTERNAL
+  ERR_INTERNAL,
+  ERR_NULL_PTR,
 } ErrorCode;
 
 typedef struct {
   ErrorCode code;
   const char* message;
 } Error;
+
+// TODO macro, use this for not-implemented features
+#define TODO(msg) do { \
+  fprintf(stderr, "%s:%d: TODO here: %s\n", __FILE__, __LINE__, msg); \
+  abort(); \
+  } while (0)
+
+// UNREACHABLE macro, use it for regions that are not meant to be reached
+#define UNREACHABLE(msg) do { \
+  fprintf(stderr, "%s:%d: UNREACHABLE REGION: %s\n", __FILE__, __LINE__, msg); \
+  abort(); \
+  } while(0)
 
 #define MAKE_ERR(ecode, emsg) \
   ((Error){.code=(ecode), .message=(emsg)})
